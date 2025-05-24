@@ -1,68 +1,68 @@
 import streamlit as st
 import random
 from datetime import date
-
+import urllib.parse
 
 st.set_page_config(page_title="mySongList", page_icon=":)", layout="wide")
 
 st.title("mySongList")
-st.subheader("🎶 Elige la lista de canciones")
+st.subheader("\U0001F3B6 Elige la lista de canciones")
 
-# Verificamos si la clave "canciones" no existe todavía en el estado de la sesión
-# Esto asegura que la lista se cree solo una vez, no cada vez que se actualiza la página
+# --- Cargar canciones desde archivo externo ---
+def cargar_canciones():
+    try:
+        with open("canciones.txt", "r", encoding="utf-8") as f:
+            return [line.strip() for line in f if line.strip()]
+    except FileNotFoundError:
+        return []
+
+# --- Guardar canción en archivo externo ---
+def guardar_cancion_en_archivo(cancion):
+    with open("canciones.txt", "a", encoding="utf-8") as f:
+        f.write(cancion + "\n")
+
+# --- Inicializar estados ---
 if "canciones" not in st.session_state:
-    st.session_state.canciones = []  # Creamos la lista vacía de canciones
+    st.session_state.canciones = cargar_canciones()
+
+if "historial" not in st.session_state:
+    st.session_state.historial = []
 
 # Entrada de usuario
 cancion = st.text_input("Escribe el nombre de la canción")
-# Cuando el usuario haga clic en el botón, se ejecuta este bloque
-#Si el usuario hace clic en el botón "Guardar canción", se ejecuta este bloque
 if st.button("Guardar canción"):
-    # Eliminamos los espacios en blanco al principio y al final del texto ingresado
-    # Esto evita que se guarden canciones vacías o con espacios accidentales
     cancion = cancion.strip()
-    #Verificamos si el texto está vacío después de aplicar strip()
-    # Esto ocurre si el usuario no escribió nada o solo puso espacios
     if cancion == "":
-        # Mostramos un mensaje de advertencia al usuario
         st.warning("Por favor escribe un nombre antes de guardar.")
     else:
-        # Vamos a verificar si la canción ya existe en la lista
-        # Creamos una variable llamada 'ya_existe' para llevar el control
-        ya_existe = False
-        # Recorremos todas las canciones que ya están guardadas
-        for c in st.session_state.canciones:
-            # Comparamos la nueva canción con cada una, ignorando mayúsculas/minúsculas
-            if cancion.lower() == c.lower():
-                ya_existe = True  # Si encontramos una coincidencia, cambiamos la bandera
-                break  # Ya no necesitamos seguir buscando, salimos del bucle
-        # Si la canción ya existía, mostramos una advertencia
+        ya_existe = any(cancion.lower() == c.lower() for c in st.session_state.canciones)
         if ya_existe:
             st.warning("Esta canción ya está en la lista.")
         else:
-            # Si la canción no estaba, la agregamos a la lista
             st.session_state.canciones.append(cancion)
-            # Mostramos un mensaje de éxito al usuario
-            st.toast("🎶 Canción guardada con éxito!")
+            guardar_cancion_en_archivo(cancion)
+            st.toast("\U0001F3B6 Canción guardada con éxito!")
 
+# Mostrar listado dentro de un expander para evitar scroll largo
+with st.expander("\U0001F3BC Listado de canciones (haz clic para ver/desplegar)"):
+    for i, c in enumerate(st.session_state.canciones):
+        col1, col2 = st.columns([6, 1])
+        with col1:
+            st.write(f"{i+1}. {c}")
+        with col2:
+            if st.button("🗑️", key=f"delete_{i}"):
+                st.session_state.canciones.pop(i)
+                # Actualizar archivo externo
+                with open("canciones.txt", "w", encoding="utf-8") as f:
+                    f.write("\n".join(st.session_state.canciones))
+                st.rerun()
 
-# Mostrar listado con opción de eliminar
-st.subheader("🎼 Listado de canciones:")
-for i, c in enumerate(st.session_state.canciones):
-    col1, col2 = st.columns([6, 25])
-    with col1:
-        st.write(f"{i+1}. {c}")
-    with col2:
-        if st.button("🗑️", key=f"delete_{i}"):
-            st.session_state.canciones.pop(i)
-            st.rerun()
-
-# -------------------------
 # SECCIÓN DE SELECCIÓN DE CANCIONES
-# -------------------------
-st.subheader("🎲 Selección de canciones para hoy")
-
+st.subheader("\U0001F3B2 Selección de canciones para hoy")
 modo = st.radio("¿Cómo quieres seleccionar las canciones?", ["Manual", "Aleatoria"])
+
+seleccion_manual = []
+seleccion_aleatoria = []
 
 if st.session_state.canciones:
     if modo == "Manual":
@@ -70,7 +70,7 @@ if st.session_state.canciones:
         if seleccion_manual:
             st.success("Lista de canciones seleccionadas manualmente:")
             st.write(seleccion_manual)
-    else:  # Aleatoria
+    else:
         cantidad = st.slider("¿Cuántas canciones quieres elegir al azar?", 1, len(st.session_state.canciones))
         if st.button("Generar lista aleatoria"):
             seleccion_aleatoria = random.sample(st.session_state.canciones, cantidad)
@@ -79,11 +79,7 @@ if st.session_state.canciones:
 else:
     st.info("Primero debes agregar canciones para poder seleccionarlas.")
 
-
-# creando el historial
-if "historial" not in st.session_state:
-    st.session_state.historial = []
-
+# Guardar historial
 if st.button("Guardar historial"):
     if st.session_state.canciones:
         canciones_seleccionadas = seleccion_manual if seleccion_manual else seleccion_aleatoria
@@ -94,29 +90,24 @@ if st.button("Guardar historial"):
             })
             st.success("Historial guardado correctamente.")
 
-
-st.subheader("📜 Historial de canciones tocadas")
-
+# Mostrar historial
+st.subheader("\U0001F4DC Historial de canciones tocadas")
 if st.session_state.historial:
     for registro in reversed(st.session_state.historial):
-        st.markdown(f"### 📅 {registro['fecha']}")
+        st.markdown(f"### \U0001F4C5 {registro['fecha']}")
         for cancion in registro["canciones"]:
-            st.markdown(f"- 🎵 {cancion}")
+            st.markdown(f"- \U0001F3B5 {cancion}")
 else:
     st.info("Todavía no has guardado ninguna lista en el historial.")
 
-import urllib.parse
-
-if st.button("📤 Compartir por WhatsApp"):
+# Compartir por WhatsApp
+if st.button("\U0001F4E4 Compartir por WhatsApp"):
     if st.session_state.historial:
-        # Último registro del historial
         ultima = st.session_state.historial[-1]
         fecha = ultima["fecha"]
         canciones = ultima["canciones"]
 
-        mensaje = f"📅 {fecha}\n"
-        mensaje += "\n".join([f"🎵 {c}" for c in canciones])
-
+        mensaje = f"\U0001F4C5 {fecha}\n" + "\n".join([f"\U0001F3B5 {c}" for c in canciones])
         mensaje_codificado = urllib.parse.quote(mensaje)
         enlace_whatsapp = f"https://wa.me/?text={mensaje_codificado}"
 
