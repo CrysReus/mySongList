@@ -114,3 +114,7 @@ if st.button("\U0001F4E4 Compartir por WhatsApp"):
         st.markdown(f"[Haz clic aquí para compartir por WhatsApp]({enlace_whatsapp})", unsafe_allow_html=True)
     else:
         st.warning("Primero guarda una lista en el historial.")
+
+st.subheader("CARGAR CANCIONES CON LETRAS Y ACORDES")
+st.subheader("Aqui estrán todas las canciones con letras y acordes... ")
+st.text("Se esta trabajando en ello, agradecemos tu paciencia.....")
